@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>ЛР-2: Дослідження CSS</title>
+
+  <!-- Підключення зовнішнього файлу для експерименту 4.2 (Каскад) -->
+  <link rel="stylesheet" href="cascade.css">
+
+  <style>
+    /* =========================================
+       4.1. Box Model
+       ========================================= */
+    .box {
+      width: 200px;
+      height: 100px;
+      padding: 20px;
+      border: 5px solid black;
+      margin-bottom: 10px;
+      background-color: lightblue;
+    }
+    .content-box {
+      box-sizing: content-box;
+    }
+    .border-box {
+      box-sizing: border-box;
+    }
+
+    /* =========================================
+       4.2. Cascade (Внутрішній стиль)
+       ========================================= */
+    /* Цей стиль конфліктуватиме із зовнішнім файлом cascade.css */
+    .cascade-text {
+      color: green; /* Переможе зовнішній файл, бо тег <style> стоїть нижче за <link> (якщо дивитися в head) */
+    }
+    /* Зміна порядку оголошення класів */
+    .color-blue { color: blue; }
+    .color-red { color: red; } /* Переможе, бо оголошений нижче в CSS */
+
+    /* =========================================
+       4.3. Specificity (Вага селекторів)
+       ========================================= */
+    /* Вага ID: (1,0,0) = 100 */
+    #winner-id {
+      color: purple;
+    }
+    /* Вага 3 класів: (0,3,0) = 30 */
+    .class1.class2.class3 {
+      color: orange;
+    }
+    /* Вага тегу: (0,0,1) = 1 */
+    div {
+      color: gray;
+    }
+
+    /* =========================================
+       4.4. Inheritance (Успадкування)
+       ========================================= */
+    .inheritance-zone {
+      font-family: 'Courier New', Courier, monospace;
+      color: darkred;
+      border: 1px dashed black;
+      padding: 10px;
+    }
+    /* Виправляємо відсутність успадкування для кнопки та посилання */
+    .fixed-inheritance button {
+      font-family: inherit;
+      color: inherit;
+    }
+    .fixed-inheritance a {
+      color: inherit;
+    }
+
+    /* =========================================
+       4.5. CSS Variables
+       ========================================= */
+    :root {
+      --theme-bg: #f0f0f0;
+      --theme-text: #333;
+    }
+    .var-card {
+      background-color: var(--theme-bg);
+      color: var(--theme-text);
+      padding: 15px;
+      border: 2px solid black;
+      margin-bottom: 10px;
+    }
+    /* Локальне перевизначення змінних */
+    .dark-card {
+      --theme-bg: #222;
+      --theme-text: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<h1>4.1. Box Model</h1>
+<!-- У DevTools вкладка Computed.
+     content-box буде займати 250px (200+20*2+5*2).
+     border-box буде займати 200px (контент стиснеться до 150px). -->
+<div class="box content-box">Content Box (250px)</div>
+<div class="box border-box">Border Box (200px)</div>
+
+<hr>
+
+<h1>4.2. Cascade</h1>
+<!-- У DevTools  вкладка Styles.
+     Текст буде червоним, бо .color-red написаний нижче за .color-blue. -->
+<p class="color-blue color-red">Якого я кольору? (Тестуємо порядок класів)</p>
+
+<!-- Текст буде зеленим, бо тег <style> стоїть нижче за <link> у head (або навпаки, залежно від розташування). -->
+<p class="cascade-text">Конфлікт зовнішнього файлу та тегу style</p>
+
+<hr>
+
+<h1>4.3. Specificity</h1>
+<!-- У DevTools , що правило з ID перекреслює правило з трьома класами. -->
+<div id="winner-id" class="class1 class2 class3">
+  ID завжди перемагає класи! (Я фіолетовий)
+</div>
+
+<hr>
+
+<h1>4.4. Inheritance</h1>
+<div class="inheritance-zone">
+  <p>Я параграф. Я успадкував шрифт і колір автоматично.</p>
+  <a href="#">Я посилання. Я не успадкував колір (маю свій синій за замовчуванням).</a>
+  <br><br>
+  <button>Я кнопка. Я не успадкувала ні колір, ні шрифт.</button>
+</div>
+
+<div class="inheritance-zone fixed-inheritance">
+  <p>Зона виправленого успадкування (через inherit):</p>
+  <a href="#">Тепер я правильного кольору.</a>
+  <br><br>
+  <button>Тепер я правильного кольору і шрифту.</button>
+</div>
+
+<hr>
+
+<h1>4.5. CSS Variables</h1>
+<!-- У DevTools , як .dark-card підміняє значення :root локально. -->
+<div class="var-card">
+  Стандартна картка (використовує :root)
+</div>
+<div class="var-card dark-card">
+  Темна картка (змінні перевизначені локально)
+</div>
+
+</body>
+</html>

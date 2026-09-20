@@ -1,0 +1,4 @@
+/* Цей стиль конфліктує з тегом <style> в HTML файлі */
+.cascade-text {
+  color: orange;
+}
