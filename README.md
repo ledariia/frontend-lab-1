@@ -11,5 +11,5 @@
 2. Відкрити файл `index.html` у браузері.
 
 ## Посилання
-- GitHub Pages:
-- Vercel:
+- GitHub Pages:[https://ledariia.github.io/frontend-lab-1/]
+- Vercel:[https://frontend-lab-1-pied.vercel.app/]
