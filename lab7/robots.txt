@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ledariia.github.io/frontend-lab-1/lab7/sitemap.xml
