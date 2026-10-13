@@ -36,6 +36,44 @@ export function once(fn) {
  * @param {(arg: T) => R} fn
  * @returns {(arg: T) => R}
  */
+export function createCounter(start = 0) {
+  let current = start;
+
+  return {
+    increment: () => {
+      current += 1;
+      return current;
+    },
+    reset: () => {
+      current = start;
+      return current;
+    },
+    value: () => current
+  };
+}
+
+export function once(fn) {
+  let called = false;
+  let result;
+  return function(...args) {
+    if (!called) {
+      result = fn(...args);
+      called = true;
+    }
+    return result;
+  };
+}
+
 export function memoize(fn) {
-  throw new Error('Not implemented');
+  const cache = new Map();
+
+  return function(arg) {
+    if (cache.has(arg)) {
+      return cache.get(arg);
+    }
+
+    const result = fn(arg);
+    cache.set(arg, result);
+    return result;
+  };
 }
