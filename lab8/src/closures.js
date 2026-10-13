@@ -13,30 +13,6 @@
  * @returns {Counter}
  */
 export function createCounter(start = 0) {
-  throw new Error('Not implemented');
-}
-
-/**
- * C5.2. Обгортає `fn` так, що вона виконується щонайбільше один раз.
- * Специфікація — ТЗ, C5.
- *
- * @template {(...args: any[]) => any} F
- * @param {F} fn
- * @returns {F}
- */
-export function once(fn) {
-  throw new Error('Not implemented');
-}
-
-/**
- * C5.3. Запам'ятовує результати `fn` для кожного значення її єдиного аргументу.
- * Специфікація — ТЗ, C5.
- *
- * @template T, R
- * @param {(arg: T) => R} fn
- * @returns {(arg: T) => R}
- */
-export function createCounter(start = 0) {
   let current = start;
 
   return {
@@ -52,6 +28,14 @@ export function createCounter(start = 0) {
   };
 }
 
+/**
+ * C5.2. Обгортає `fn` так, що вона виконується щонайбільше один раз.
+ * Специфікація — ТЗ, C5.
+ *
+ * @template {(...args: any[]) => any} F
+ * @param {F} fn
+ * @returns {F}
+ */
 export function once(fn) {
   let called = false;
   let result;
@@ -63,6 +47,15 @@ export function once(fn) {
     return result;
   };
 }
+
+/**
+ * C5.3. Запам'ятовує результати `fn` для кожного значення її єдиного аргументу.
+ * Специфікація — ТЗ, C5.
+ *
+ * @template T, R
+ * @param {(arg: T) => R} fn
+ * @returns {(arg: T) => R}
+ */
 
 export function memoize(fn) {
   const cache = new Map();
