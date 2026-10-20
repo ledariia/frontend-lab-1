@@ -14,6 +14,7 @@ const bookingsCount = document.getElementById('bookings-count');
 
 const bookings = [];
 let current = null;
+let openerButton = null;
 
 function field(name) {
   return dialog.querySelector(`[data-field="${name}"]`);
@@ -25,6 +26,8 @@ function updateTotal() {
 }
 
 export function openBooking(venue, date) {
+  openerButton = document.activeElement;
+
   current = { venue, date };
   form.reset();
 
@@ -42,13 +45,13 @@ function renderBookingsCount() {
 
 function renderBookingsList() {
   bookingsList.innerHTML = bookings
-    .map((booking) => `
+      .map((booking) => `
       <li class="bookings-list__item">
         <strong>${booking.venue.name}</strong>
         <span>${formatDate(booking.date)}, ${booking.time} · ${booking.duration}</span>
         <span class="bookings-list__total">${formatPrice(booking.total)}</span>
       </li>`)
-    .join('');
+      .join('');
   bookingsEmpty.hidden = bookings.length > 0;
 }
 
@@ -75,3 +78,8 @@ dialog.querySelector('[data-action="cancel"]').addEventListener('click', () => d
 
 document.querySelector('.bookings-toggle').addEventListener('click', () => bookingsDialog.showModal());
 bookingsDialog.querySelector('[data-action="close"]').addEventListener('click', () => bookingsDialog.close());
+dialog.addEventListener('close', () => {
+  if (openerButton) {
+    openerButton.focus();
+  }
+});
