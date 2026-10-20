@@ -36,7 +36,7 @@ export function openBooking(venue, date) {
   dialog.showModal();
 }
 
-function renderBookingCount() {
+function renderBookingsCount() {
   bookingsCount.textContent = bookings.length;
 }
 
