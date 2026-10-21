@@ -11,25 +11,36 @@ export function renderShows(list) {
   const status = document.getElementById('status');
   const template = document.getElementById('show-card');
 
-  results.innerHTML = '';
+  results.replaceChildren();
 
   if (list.length === 0) {
-    status.textContent = 'Немає серіалів, що відповідають фільтрам.';
+    status.textContent = 'Нічого не знайдено';
     return;
   }
 
-  status.textContent = `Знайдено серіалів: ${list.length}`;
+  status.textContent = `Знайдено: ${list.length} з 30`;
+
+  const fragment = document.createDocumentFragment();
 
   for (const show of list) {
     const clone = template.content.cloneNode(true);
-    const card = clone.querySelector('.card');
+    const li = clone.querySelector('li');
 
-    card.dataset.id = show.id;
-    card.querySelector('[data-field="name"]').textContent = show.name;
-    card.querySelector('[data-field="year"]').textContent = show.year ?? 'Невідомо';
-    card.querySelector('[data-field="genres"]').textContent = show.genres.length ? show.genres.join(', ') : 'Немає';
-    card.querySelector('[data-field="rating"]').textContent = show.rating ?? 'Немає оцінки';
+    li.dataset.id = show.id;
 
-    results.appendChild(clone);
+    clone.querySelector('[data-field="name"]').textContent = show.name;
+    clone.querySelector('[data-field="year"]').textContent = show.year ?? '—';
+    clone.querySelector('[data-field="genres"]').textContent = show.genres && show.genres.length ? show.genres.join(', ') : '—';
+    clone.querySelector('[data-field="rating"]').textContent = show.rating ?? '—';
+
+    const btnToggle = clone.querySelector('[data-action="toggle"]');
+    const btnDetails = clone.querySelector('[data-action="details"]');
+
+    btnToggle.setAttribute('aria-label', `До списку: ${show.name}`);
+    btnDetails.setAttribute('aria-label', `Детальніше про ${show.name}`);
+
+    fragment.appendChild(clone);
   }
+
+  results.appendChild(fragment);
 }
