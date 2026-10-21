@@ -1,74 +1,91 @@
 import { getShow, notes, saveNote } from './state.js';
 
 let currentShowId = null;
+let openerButton = null;
 
-/**
- * C4. Відкриває діалог #details для серіалу: назва, опис, посилання на сторінку TVmaze і форма
- * з моєю оцінкою й нотаткою. Специфікація — ТЗ, C4.
- *
- * @param {number} id
- */
 export function openDetails(id) {
+  currentShowId = id;
+  openerButton = document.activeElement;
+
   const show = getShow(id);
   const dialog = document.getElementById('details');
-  const title = document.getElementById('details-title');
-  const summary = document.getElementById('details-summary');
-  const link = document.getElementById('details-link');
-  const ratingInput = document.getElementById('note-rating');
-  const noteInput = document.getElementById('note-text');
-  const ratingError = document.getElementById('note-rating-error');
+  const form = document.getElementById('note-form');
 
-  currentShowId = id;
-  ratingError.textContent = '';
+  document.getElementById('details-title').textContent = show.name;
+  document.getElementById('details-link').href = show.url;
 
-  title.textContent = show.name;
-  summary.innerHTML = show.summary;
-  link.href = show.url;
+  const temp = document.createElement('template');
+  temp.innerHTML = show.summary;
+  document.getElementById('details-summary').textContent = temp.content.textContent;
 
-  const note = notes.get(id);
-  if (note) {
-    ratingInput.value = note.rating;
-    noteInput.value = note.text;
+  const ratingInput = form.elements.rating;
+  ratingInput.removeAttribute('aria-invalid');
+  ratingInput.removeAttribute('aria-describedby'); 
+  document.getElementById('note-rating-error').textContent = '';
+
+  const saved = notes.get(id);
+  if (saved) {
+    form.elements.rating.value = saved.rating;
+    form.elements.note.value = saved.text;
   } else {
-    ratingInput.value = '';
-    noteInput.value = '';
+    form.reset();
   }
-
   dialog.showModal();
 }
 
-/**
- * C4. Підключає діалог #details: закриття й форму «Моя оцінка й нотатка». main.js викликає цю
- * функцію один раз. Специфікація — ТЗ, C4.
- *
- * @param {() => void} refresh перемальовує список для поточних фільтрів
- */
 export function initDetails(refresh) {
   const dialog = document.getElementById('details');
-  const noteForm = document.getElementById('note-form');
-  const cancelBtn = noteForm.querySelector('button[type="button"]');
-  const ratingInput = document.getElementById('note-rating');
-  const ratingError = document.getElementById('note-rating-error');
+  const form = document.getElementById('note-form');
+
+  form.noValidate = true;
+
+  const ratingInput = form.elements.rating;
+  const errorElement = document.getElementById('note-rating-error');
+  const cancelBtn = form.querySelector('button[type="button"]');
 
   cancelBtn.addEventListener('click', () => {
     dialog.close();
   });
 
-  noteForm.addEventListener('submit', (event) => {
+  dialog.addEventListener('close', () => {
+    if (openerButton && document.body.contains(openerButton)) {
+      openerButton.focus();
+    }
+  });
+
+  ratingInput.addEventListener('input', () => {
+    ratingInput.removeAttribute('aria-invalid');
+    ratingInput.removeAttribute('aria-describedby');
+    errorElement.textContent = '';
+  });
+
+  form.addEventListener('submit', (event) => {
     event.preventDefault();
 
-    if (currentShowId === null) return;
+    const rating = ratingInput.valueAsNumber;
+    if (Number.isNaN(rating) || rating < 1 || rating > 10 || !Number.isInteger(rating)) {
+      ratingInput.setAttribute('aria-invalid', 'true');
+      ratingInput.setAttribute('aria-describedby', 'note-rating-error'); // ВАЖЛИВО ДЛЯ C4.7
+      errorElement.textContent = 'Оцінка має бути цілим числом від 1 до 10';
+      ratingInput.focus();
+      return;
+    }
 
-    const rating = Number(ratingInput.value);
-    const note = document.getElementById('note-text').value;
+    saveNote(currentShowId, {
+      rating: rating,
+      text: form.elements.note.value.trim()
+    });
 
-    try {
-      saveNote(currentShowId, { rating, text: note });
-      ratingError.textContent = '';
-      dialog.close();
-      refresh();
-    } catch (error) {
-      ratingError.textContent = error.message;
+    refresh();
+
+    const show = getShow(currentShowId);
+    document.getElementById('status').textContent = `Нотатку до ${show.name} збережено`;
+
+    dialog.close();
+
+    const newCard = document.querySelector(`li[data-id="${currentShowId}"]`);
+    if (newCard) {
+      newCard.querySelector('[data-action="details"]').focus();
     }
   });
 }
