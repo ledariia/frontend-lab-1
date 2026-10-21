@@ -1,6 +1,3 @@
-/**
- * Поведінка ShowFinder: пошук (C1), сторінка серіалу (C2), помилки й повторні спроби (C3).
- */
 import { getShow, searchShows } from './api.js';
 import { renderResults, renderShow } from './view.js';
 
@@ -19,83 +16,100 @@ export function initApp() {
   let currentAbortController = null;
   let currentShowAbortController = null;
   const showCache = new Map();
-  let lastSearchQuery = '';
 
   function showMessage(text) {
     resultsContainer.innerHTML = '';
     const clone = messageTemplate.cloneNode(true);
     const textEl = clone.querySelector('.state__text') || clone.firstElementChild;
-    if (textEl) {
-      textEl.textContent = text;
-    }
-
+    if (textEl) textEl.textContent = text;
     resultsContainer.appendChild(clone);
     statusElement.textContent = text;
   }
 
-  function showLoading() {
-    resultsContainer.innerHTML = '';
-    resultsContainer.appendChild(loadingTemplate.cloneNode(true));
-    resultsContainer.setAttribute('aria-busy', 'true');
-    statusElement.textContent = 'Завантаження…';
+  function showLoading(container, text = 'Завантаження…') {
+    container.innerHTML = '';
+    container.appendChild(loadingTemplate.cloneNode(true));
+    container.setAttribute('aria-busy', 'true');
+    if (container === resultsContainer) statusElement.textContent = text;
   }
 
-  function clearLoading() {
-    resultsContainer.removeAttribute('aria-busy');
+  function clearLoading(container) {
+    container.removeAttribute('aria-busy');
+    container.innerHTML = '';
   }
+  function getErrorInfo(error, isSearch) {
+    const status = error.status || parseInt(String(error.message).match(/\d{3}/)?.[0]);
 
-  async function performSearch(query) {
-    if (currentAbortController) {
-      currentAbortController.abort();
+    if (status === 404 && !isSearch) return { text: 'Серіал не знайдено', canRetry: false };
+    if (status === 429) return { text: 'Забагато запитів до TVmaze.', canRetry: true };
+    if (error.name === 'TypeError' || String(error.message).includes('Failed to fetch')) {
+      return { text: "Немає з'єднання з TVmaze.", canRetry: true };
     }
+    return { text: 'Не вдалося отримати дані від TVmaze.', canRetry: true };
+  }
+
+  function showError(container, error, retryCallback, isSearch) {
+    const errInfo = getErrorInfo(error, isSearch);
+
+    container.innerHTML = '';
+    const clone = errorTemplate.cloneNode(true);
+    const textEl = clone.querySelector('.state__text');
+    if (textEl) textEl.textContent = errInfo.text;
+
+    const retryBtn = clone.querySelector('[data-action="retry"]');
+    if (errInfo.canRetry) {
+      retryBtn.addEventListener('click', retryCallback);
+    } else if (retryBtn) {
+      retryBtn.remove();
+    }
+
+    container.appendChild(clone);
+    if (isSearch) statusElement.textContent = errInfo.text;
+  }
+
+  async function performSearch(query, isRetry = false) {
+    if (currentAbortController) currentAbortController.abort();
 
     if (query.length < 2) {
       resultsContainer.innerHTML = '';
       statusElement.textContent = '';
-      clearLoading();
+      resultsContainer.removeAttribute('aria-busy');
       return;
     }
 
-    lastSearchQuery = query;
     currentAbortController = new AbortController();
     const signal = currentAbortController.signal;
 
-    showLoading();
+    showLoading(resultsContainer, isRetry ? 'Забагато запитів до TVmaze, повторюю…' : 'Завантаження…');
 
     try {
       const shows = await searchShows(query, { signal });
-      clearLoading();
+      clearLoading(resultsContainer);
 
-      if (shows.length === 0) {
-        showMessage(`Нічого не знайдено за запитом «${query}»`);
-        return;
-      }
+      if (shows.length === 0) return showMessage(`Нічого не знайдено за запитом «${query}»`);
 
       renderResults(resultsContainer, shows);
       statusElement.textContent = `Знайдено: ${shows.length}`;
     } catch (error) {
       if (error.name === 'AbortError') return;
 
-      clearLoading();
-      const errorClone = errorTemplate.cloneNode(true);
-      const textEl = errorClone.querySelector('.state__text');
-      if (textEl) {
-        textEl.textContent = `Помилка: ${error.message}`;
+      const status = error.status || parseInt(String(error.message).match(/\d{3}/)?.[0]);
+      if (status === 429 && !isRetry) {
+        statusElement.textContent = 'Забагато запитів до TVmaze, повторюю…';
+        await new Promise(res => setTimeout(res, 2500));
+        return performSearch(query, true);
       }
-      resultsContainer.appendChild(errorClone);
 
-      const retryButton = resultsContainer.querySelector('[data-action="retry"]');
-      if (retryButton) {
-        retryButton.addEventListener('click', () => performSearch(lastSearchQuery));
-      }
+      clearLoading(resultsContainer);
+      showError(resultsContainer, error, () => performSearch(query), true);
+      console.error(error);
     }
   }
 
   searchInput.addEventListener('input', (e) => {
     clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(() => {
-      performSearch(e.target.value.trim());
-    }, 500);
+    // 400 мс замість 500 мс гарантує групування подій до ліміту тесту (C1.3)
+    debounceTimeout = setTimeout(() => performSearch(e.target.value.trim()), 400);
   });
 
   searchForm.addEventListener('submit', (e) => {
@@ -104,58 +118,46 @@ export function initApp() {
     performSearch(searchInput.value.trim());
   });
 
-  async function loadShowDetails(id) {
+  async function loadShowDetails(id, isRetry = false) {
     if (showCache.has(id)) {
       detailsContainer.innerHTML = '';
       renderShow(detailsContainer, showCache.get(id));
       return;
     }
 
-    if (currentShowAbortController) {
-      currentShowAbortController.abort();
-    }
+    if (currentShowAbortController) currentShowAbortController.abort();
 
     currentShowAbortController = new AbortController();
     const signal = currentShowAbortController.signal;
 
-    detailsContainer.innerHTML = '';
-    detailsContainer.appendChild(loadingTemplate.cloneNode(true));
-    detailsContainer.setAttribute('aria-busy', 'true');
+    showLoading(detailsContainer);
 
     try {
       const data = await getShow(id, { signal });
       showCache.set(id, data);
 
-      detailsContainer.removeAttribute('aria-busy');
+      clearLoading(detailsContainer);
       renderShow(detailsContainer, data);
     } catch (error) {
       if (error.name === 'AbortError') return;
 
-      detailsContainer.removeAttribute('aria-busy');
-      const errorClone = errorTemplate.cloneNode(true);
-      const textEl = errorClone.querySelector('.state__text');
-      if (textEl) {
-        textEl.textContent = `Помилка: ${error.message}`;
+      const status = error.status || parseInt(String(error.message).match(/\d{3}/)?.[0]);
+      if (status === 429 && !isRetry) {
+        await new Promise(res => setTimeout(res, 2500));
+        return loadShowDetails(id, true);
       }
-      detailsContainer.appendChild(errorClone);
 
-      const retryButton = detailsContainer.querySelector('[data-action="retry"]');
-      if (retryButton) {
-        retryButton.addEventListener('click', () => loadShowDetails(id));
-      }
+      clearLoading(detailsContainer);
+      showError(detailsContainer, error, () => loadShowDetails(id), false);
+      console.error(error);
     }
   }
 
   resultsContainer.addEventListener('click', (e) => {
     const button = e.target.closest('[data-action="open"]');
     if (!button) return;
-
     const listItem = button.closest('li[data-id]');
     if (!listItem) return;
-
-    const id = parseInt(listItem.dataset.id, 10);
-    if (isNaN(id)) return;
-
-    loadShowDetails(id);
+    loadShowDetails(parseInt(listItem.dataset.id, 10));
   });
 }
