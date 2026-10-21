@@ -19,6 +19,7 @@ export function initApp() {
   let currentAbortController = null;
   let currentShowAbortController = null;
   const showCache = new Map();
+  let lastSearchQuery = '';
 
   function showMessage(text) {
     resultsContainer.innerHTML = '';
@@ -55,6 +56,7 @@ export function initApp() {
       return;
     }
 
+    lastSearchQuery = query;
     currentAbortController = new AbortController();
     const signal = currentAbortController.signal;
 
@@ -75,7 +77,17 @@ export function initApp() {
       if (error.name === 'AbortError') return;
 
       clearLoading();
-      console.error(error);
+      const errorClone = errorTemplate.cloneNode(true);
+      const textEl = errorClone.querySelector('.state__text');
+      if (textEl) {
+        textEl.textContent = `Помилка: ${error.message}`;
+      }
+      resultsContainer.appendChild(errorClone);
+
+      const retryButton = resultsContainer.querySelector('[data-action="retry"]');
+      if (retryButton) {
+        retryButton.addEventListener('click', () => performSearch(lastSearchQuery));
+      }
     }
   }
 
