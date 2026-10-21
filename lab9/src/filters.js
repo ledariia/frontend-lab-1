@@ -7,8 +7,14 @@
  * @returns {Filters}
  */
 export function readFilters() {
-  // TODO C3
-  return {};
+  const form = document.getElementById('filters');
+  const formData = new FormData(form);
+
+  const query = formData.get('query') || '';
+  const genre = formData.get('genre') || '';
+  const mine = formData.get('mine') === 'on';
+
+  return { query, genre, mine };
 }
 
 /**
@@ -18,5 +24,11 @@ export function readFilters() {
  * @param {() => void} refresh перемальовує список для поточних фільтрів
  */
 export function initFilters(refresh) {
-  // TODO C3
+  const form = document.getElementById('filters');
+
+  form.addEventListener('input', refresh);
+  form.addEventListener('change', refresh);
+  form.addEventListener('reset', () => {
+    setTimeout(refresh, 0);
+  });
 }
