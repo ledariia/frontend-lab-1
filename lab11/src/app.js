@@ -1,44 +1,90 @@
 /**
  * Поведінка ShowFinder: пошук (C1), сторінка серіалу (C2), помилки й повторні спроби (C3).
- * Тут — обробники подій, життєвий цикл кожного запиту й стани областей #results і #details:
- * завантаження, результат, порожній результат, помилка. Специфікація — ТЗ, §3–4.
  */
 import { getShow, searchShows } from './api.js';
 import { renderResults, renderShow } from './view.js';
 
-/** Підключає форму пошуку #search і області #results та #details. main.js викликає її один раз. */
 export function initApp() {
   const searchForm = document.getElementById('search');
+  const searchInput = document.getElementById('search-query');
   const resultsContainer = document.getElementById('results');
   const statusElement = document.getElementById('status');
 
-  searchForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const formData = new FormData(searchForm);
-    const query = formData.get('query').trim();
+  const loadingTemplate = document.getElementById('state-loading').content;
+  const messageTemplate = document.getElementById('state-message').content;
 
-    if (!query) {
-      renderResults(resultsContainer, []);
-      statusElement.textContent = 'Введіть назву серіалу для пошуку.';
+  let debounceTimeout;
+  let currentAbortController = null;
+
+  function showMessage(text) {
+    resultsContainer.innerHTML = '';
+    const clone = messageTemplate.cloneNode(true);
+    const textEl = clone.querySelector('.state__text') || clone.firstElementChild;
+    if (textEl) {
+      textEl.textContent = text;
+    }
+
+    resultsContainer.appendChild(clone);
+    statusElement.textContent = text;
+  }
+
+  function showLoading() {
+    resultsContainer.innerHTML = '';
+    resultsContainer.appendChild(loadingTemplate.cloneNode(true));
+    resultsContainer.setAttribute('aria-busy', 'true');
+    statusElement.textContent = 'Завантаження…';
+  }
+
+  function clearLoading() {
+    resultsContainer.removeAttribute('aria-busy');
+  }
+
+  async function performSearch(query) {
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+
+    if (query.length < 2) {
+      resultsContainer.innerHTML = '';
+      statusElement.textContent = '';
+      clearLoading();
       return;
     }
 
-    statusElement.textContent = '';
-    const loadingTemplate = document.getElementById('state-loading');
-    resultsContainer.replaceChildren(loadingTemplate.content.cloneNode(true));
+    currentAbortController = new AbortController();
+    const signal = currentAbortController.signal;
+
+    showLoading();
 
     try {
-      const shows = await searchShows(query);
-      renderResults(resultsContainer, shows);
+      const shows = await searchShows(query, { signal });
+      clearLoading();
 
       if (shows.length === 0) {
-        statusElement.textContent = 'Нічого не знайдено.';
+        showMessage(`Нічого не знайдено за запитом «${query}»`);
+        return;
       }
+
+      renderResults(resultsContainer, shows);
+      statusElement.textContent = `Знайдено: ${shows.length}`;
     } catch (error) {
-      const errorTemplate = document.getElementById('state-error');
-      const errorClone = errorTemplate.content.cloneNode(true);
-      errorClone.querySelector('.state__text').textContent = `Помилка: ${error.message}`;
-      resultsContainer.replaceChildren(errorClone);
+      if (error.name === 'AbortError') return;
+
+      clearLoading();
+      console.error(error);
     }
+  }
+
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      performSearch(e.target.value.trim());
+    }, 500);
+  });
+
+  searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(debounceTimeout);
+    performSearch(searchInput.value.trim());
   });
 }

@@ -1,32 +1,29 @@
 /**
- * Запити до TVmaze API: https://www.tvmaze.com/api. Які ендпоїнти, які відповіді й помилки —
- * ТЗ, §3.2 і §4.
+ * Запити до TVmaze API: https://www.tvmaze.com/api.
+ * Специфікація — ТЗ, §3.2 і §4.
  */
 
-/** Адреса API. */
 export const API = 'https://api.tvmaze.com';
 
 /**
- * C1. Шукає серіали за назвою. Повертає масив серіалів (об'єктів show) у порядку відповіді
- * API — те, що приймає renderResults з view.js.
  *
  * @param {string} query
  * @param {{ signal?: AbortSignal }} [options]
  * @returns {Promise<object[]>}
  */
 export async function searchShows(query, { signal } = {}) {
-  const url = `${API}/search/shows?q=${encodeURIComponent(query)}`;
-  const response = await fetch(url, { signal });
+  const params = new URLSearchParams({ q: query });
+  const response = await fetch(`${API}/search/shows?${params}`, { signal });
+
   if (!response.ok) {
     throw new Error(`Failed to search shows: ${response.status}`);
   }
+
   const data = await response.json();
   return data.map((item) => item.show);
 }
 
 /**
- * C2. Завантажує серіал з епізодами й акторами. Повертає { show, episodes, cast } — те, що
- * приймає renderShow з view.js.
  *
  * @param {number} id
  * @param {{ signal?: AbortSignal }} [options]
