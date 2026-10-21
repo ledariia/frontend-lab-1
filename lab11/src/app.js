@@ -18,6 +18,7 @@ export function initApp() {
   let debounceTimeout;
   let currentAbortController = null;
   let currentShowAbortController = null;
+  const showCache = new Map();
 
   function showMessage(text) {
     resultsContainer.innerHTML = '';
@@ -92,6 +93,12 @@ export function initApp() {
   });
 
   async function loadShowDetails(id) {
+    if (showCache.has(id)) {
+      detailsContainer.innerHTML = '';
+      renderShow(detailsContainer, showCache.get(id));
+      return;
+    }
+
     if (currentShowAbortController) {
       currentShowAbortController.abort();
     }
@@ -105,6 +112,8 @@ export function initApp() {
 
     try {
       const data = await getShow(id, { signal });
+      showCache.set(id, data);
+
       detailsContainer.removeAttribute('aria-busy');
       renderShow(detailsContainer, data);
     } catch (error) {
