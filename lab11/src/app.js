@@ -8,5 +8,37 @@ import { renderResults, renderShow } from './view.js';
 
 /** Підключає форму пошуку #search і області #results та #details. main.js викликає її один раз. */
 export function initApp() {
-  // TODO C1–C3
+  const searchForm = document.getElementById('search');
+  const resultsContainer = document.getElementById('results');
+  const statusElement = document.getElementById('status');
+
+  searchForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(searchForm);
+    const query = formData.get('query').trim();
+
+    if (!query) {
+      renderResults(resultsContainer, []);
+      statusElement.textContent = 'Введіть назву серіалу для пошуку.';
+      return;
+    }
+
+    statusElement.textContent = '';
+    const loadingTemplate = document.getElementById('state-loading');
+    resultsContainer.replaceChildren(loadingTemplate.content.cloneNode(true));
+
+    try {
+      const shows = await searchShows(query);
+      renderResults(resultsContainer, shows);
+
+      if (shows.length === 0) {
+        statusElement.textContent = 'Нічого не знайдено.';
+      }
+    } catch (error) {
+      const errorTemplate = document.getElementById('state-error');
+      const errorClone = errorTemplate.content.cloneNode(true);
+      errorClone.querySelector('.state__text').textContent = `Помилка: ${error.message}`;
+      resultsContainer.replaceChildren(errorClone);
+    }
+  });
 }

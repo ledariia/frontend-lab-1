@@ -15,7 +15,13 @@ export const API = 'https://api.tvmaze.com';
  * @returns {Promise<object[]>}
  */
 export async function searchShows(query, { signal } = {}) {
-  // TODO C1
+  const url = `${API}/search/shows?q=${encodeURIComponent(query)}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) {
+    throw new Error(`Failed to search shows: ${response.status}`);
+  }
+  const data = await response.json();
+  return data.map((item) => item.show);
 }
 
 /**
