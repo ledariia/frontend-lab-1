@@ -8,13 +8,16 @@ export function initApp() {
   const searchForm = document.getElementById('search');
   const searchInput = document.getElementById('search-query');
   const resultsContainer = document.getElementById('results');
+  const detailsContainer = document.getElementById('details');
   const statusElement = document.getElementById('status');
 
   const loadingTemplate = document.getElementById('state-loading').content;
   const messageTemplate = document.getElementById('state-message').content;
+  const errorTemplate = document.getElementById('state-error').content;
 
   let debounceTimeout;
   let currentAbortController = null;
+  let currentShowAbortController = null;
 
   function showMessage(text) {
     resultsContainer.innerHTML = '';
@@ -86,5 +89,52 @@ export function initApp() {
     e.preventDefault();
     clearTimeout(debounceTimeout);
     performSearch(searchInput.value.trim());
+  });
+
+  async function loadShowDetails(id) {
+    if (currentShowAbortController) {
+      currentShowAbortController.abort();
+    }
+
+    currentShowAbortController = new AbortController();
+    const signal = currentShowAbortController.signal;
+
+    detailsContainer.innerHTML = '';
+    detailsContainer.appendChild(loadingTemplate.cloneNode(true));
+    detailsContainer.setAttribute('aria-busy', 'true');
+
+    try {
+      const data = await getShow(id, { signal });
+      detailsContainer.removeAttribute('aria-busy');
+      renderShow(detailsContainer, data);
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+
+      detailsContainer.removeAttribute('aria-busy');
+      const errorClone = errorTemplate.cloneNode(true);
+      const textEl = errorClone.querySelector('.state__text');
+      if (textEl) {
+        textEl.textContent = `Помилка: ${error.message}`;
+      }
+      detailsContainer.appendChild(errorClone);
+
+      const retryButton = detailsContainer.querySelector('[data-action="retry"]');
+      if (retryButton) {
+        retryButton.addEventListener('click', () => loadShowDetails(id));
+      }
+    }
+  }
+
+  resultsContainer.addEventListener('click', (e) => {
+    const button = e.target.closest('[data-action="open"]');
+    if (!button) return;
+
+    const listItem = button.closest('li[data-id]');
+    if (!listItem) return;
+
+    const id = parseInt(listItem.dataset.id, 10);
+    if (isNaN(id)) return;
+
+    loadShowDetails(id);
   });
 }

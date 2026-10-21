@@ -30,5 +30,19 @@ export async function searchShows(query, { signal } = {}) {
  * @returns {Promise<{ show: object, episodes: object[], cast: object[] }>}
  */
 export async function getShow(id, { signal } = {}) {
-  // TODO C2
+  const [showResponse, episodesResponse, castResponse] = await Promise.all([
+    fetch(`${API}/shows/${id}`, { signal }),
+    fetch(`${API}/shows/${id}/episodes`, { signal }),
+    fetch(`${API}/shows/${id}/cast`, { signal }),
+  ]);
+
+  if (!showResponse.ok) throw new Error(`Failed to fetch show: ${showResponse.status}`);
+  if (!episodesResponse.ok) throw new Error(`Failed to fetch episodes: ${episodesResponse.status}`);
+  if (!castResponse.ok) throw new Error(`Failed to fetch cast: ${castResponse.status}`);
+
+  const show = await showResponse.json();
+  const episodes = await episodesResponse.json();
+  const cast = await castResponse.json();
+
+  return { show, episodes, cast };
 }
