@@ -8,26 +8,28 @@
  */
 export function readFilters() {
   const form = document.getElementById('filters');
-  const formData = new FormData(form);
-
-  const query = formData.get('query') || '';
-  const genre = formData.get('genre') || '';
-  const mine = formData.get('mine') === 'on';
-
-  return { query, genre, mine };
+  return {
+    query: form.elements.query.value.trim().toLowerCase(),
+    genre: form.elements.genre.value,
+    mine: form.elements.mine.checked
+  };
 }
 
-/**
- * C3. Підключає форму фільтрів: після кожної зміни — refresh(). main.js викликає цю функцію
- * один раз. Специфікація — ТЗ, C3.
- *
- * @param {() => void} refresh перемальовує список для поточних фільтрів
- */
 export function initFilters(refresh) {
   const form = document.getElementById('filters');
 
-  form.addEventListener('input', refresh);
-  form.addEventListener('change', refresh);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+  });
+
+  form.addEventListener('input', (event) => {
+    if (event.target.name === 'query') refresh();
+  });
+
+  form.addEventListener('change', (event) => {
+    if (event.target.name === 'genre' || event.target.name === 'mine') refresh();
+  });
+
   form.addEventListener('reset', () => {
     setTimeout(refresh, 0);
   });
